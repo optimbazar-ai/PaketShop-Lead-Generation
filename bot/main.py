@@ -142,6 +142,13 @@ async def handle_menu_buttons(message: Message, state: FSMContext):
         except Exception as e:
             logging.error(f"Adminga xabar yuborishda xatolik: {e}")
 
+# --- Chat ID'ni olish uchun maxsus buyruq ---
+@dp.message(Command('get_chat_id'))
+async def get_chat_id(message: Message):
+    chat_id_message = f"Bu chatning ID'si: `{message.chat.id}`"
+    logging.info(chat_id_message)
+    await message.answer(chat_id_message)
+
 # --- Botni ishga tushirish --- #
 async def main():
     logging.basicConfig(level=logging.INFO)
