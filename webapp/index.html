@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PaketShop Ariza</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --tg-theme-bg-color: var(--tg-bg-color, #ffffff);
+            --tg-theme-text-color: var(--tg-text-color, #000000);
+            --tg-theme-hint-color: var(--tg-hint-color, #999999);
+            --tg-theme-link-color: var(--tg-link-color, #2481cc);
+            --tg-theme-button-color: var(--tg-button-color, #2481cc);
+            --tg-theme-button-text-color: var(--tg-button-text-color, #ffffff);
+            --tg-theme-secondary-bg-color: var(--tg-secondary-bg-color, #f4f4f4);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: var(--tg-theme-hint-color);
+        }
+
+        input[type="text"],
+        input[type="tel"],
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--tg-theme-secondary-bg-color);
+            border-radius: 8px;
+            background-color: var(--tg-theme-secondary-bg-color);
+            color: var(--tg-theme-text-color);
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        input::placeholder {
+            color: var(--tg-theme-hint-color);
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            background-color: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1 id="form-title">Ariza qoldirish</h1>
+
+        <form id="lead-form">
+            <div class="form-group">
+                <label for="name" id="label-name">Ismingiz</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="phone" id="label-phone">Telefon raqamingiz</label>
+                <input type="tel" id="phone" name="phone" required>
+            </div>
+
+            <div class="form-group">
+                <label for="product" id="label-product">Mahsulot turi</label>
+                <select id="product" name="product" required>
+                    <!-- Options will be populated by JavaScript -->
+                </select>
+            </div>
+
+            <button type="submit" id="submit-btn">Yuborish</button>
+        </form>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+
+        // --- I18N Matnlar ---
+        const i18n = {
+            'uz': {
+                'form-title': 'Ariza qoldirish',
+                'label-name': 'Ismingiz',
+                'label-phone': 'Telefon raqamingiz',
+                'label-product': 'Mahsulot turi',
+                'submit-btn': 'Yuborish',
+                'products': [
+                    "Karton qutilar",
+                    "Gofrokarton",
+                    "Kog'oz paketlar",
+                    "Yelimli paketlar (skotch)",
+                    "Boshqa"
+                ],
+                'validation-error': 'Iltimos, barcha maydonlarni to\'ldiring.'
+            },
+            'ru': {
+                'form-title': 'Оставить заявку',
+                'label-name': 'Ваше имя',
+                'label-phone': 'Ваш номер телефона',
+                'label-product': 'Тип продукции',
+                'submit-btn': 'Отправить',
+                'products': [
+                    "Картонные коробки",
+                    "Гофрокартон",
+                    "Бумажные пакеты",
+                    "Клейкие ленты (скотч)",
+                    "Другое"
+                ],
+                'validation-error': 'Пожалуйста, заполните все поля.'
+            }
+        };
+
+        // --- Tilni aniqlash ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const lang = urlParams.get('lang') === 'ru' ? 'ru' : 'uz';
+
+        // --- Elementlarni tanlash ---
+        const form = document.getElementById('lead-form');
+        const nameInput = document.getElementById('name');
+        const phoneInput = document.getElementById('phone');
+        const productSelect = document.getElementById('product');
+        const submitBtn = document.getElementById('submit-btn');
+
+        // --- Interfeysni sozlash ---
+        function setupUI() {
+            document.getElementById('form-title').innerText = i18n[lang]['form-title'];
+            document.getElementById('label-name').innerText = i18n[lang]['label-name'];
+            document.getElementById('label-phone').innerText = i18n[lang]['label-phone'];
+            document.getElementById('label-product').innerText = i18n[lang]['label-product'];
+            submitBtn.innerText = i18n[lang]['submit-btn'];
+
+            // Mahsulotlar ro'yxatini to'ldirish
+            productSelect.innerHTML = '';
+            i18n[lang].products.forEach(product => {
+                const option = document.createElement('option');
+                option.value = product;
+                option.innerText = product;
+                productSelect.appendChild(option);
+            });
+        }
+
+        // --- Formani yuborish ---
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            if (!nameInput.value || !phoneInput.value || !productSelect.value) {
+                tg.showAlert(i18n[lang]['validation-error']);
+                return;
+            }
+
+            const data = {
+                name: nameInput.value,
+                phone: phoneInput.value,
+                product: productSelect.value
+            };
+
+            // Ma'lumotni botga yuborish
+            tg.sendData(JSON.stringify(data));
+            // WebApp'ni yopish
+            tg.close();
+        });
+
+        // --- Ilovani ishga tushirish ---
+        document.addEventListener('DOMContentLoaded', function() {
+            tg.ready();
+            setupUI();
+            tg.expand(); // Ilovani to'liq ekranga ochish
+        });
+
+    </script>
+
+</body>
+</html>
