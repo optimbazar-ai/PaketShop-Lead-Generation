@@ -198,7 +198,7 @@
                 console.log('Sending data:', data);
                 tg.sendData(JSON.stringify(data));
                 // WebApp'ni yopish
-                // tg.close(); // <-- Muammoni aniqlash uchun vaqtincha o'chirib turamiz
+                tg.close();
             } catch (e) {
                 console.error('Error sending data:', e);
                 tg.showAlert('Ma\'lumot yuborishda xatolik yuz berdi: ' + e.message);
