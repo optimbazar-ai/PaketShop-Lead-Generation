@@ -4,7 +4,7 @@ import os
 import json
 
 from aiogram import Bot, Dispatcher, F
-from aiogram.filters import CommandStart, Command
+from aiogram.filters import CommandStart, Command, StateFilter
 from aiogram.types import (
     Message, InlineKeyboardButton, InlineKeyboardMarkup, 
     ReplyKeyboardMarkup, KeyboardButton, WebAppInfo, CallbackQuery
@@ -106,7 +106,7 @@ async def get_chat_id(message: Message):
     logging.info(chat_id_message)
     await message.answer(chat_id_message)
 
-@dp.message()
+@dp.message(StateFilter(None))
 async def handle_messages(message: Message, state: FSMContext):
     user_data = await state.get_data()
     lang_code = user_data.get('language', 'uz')
