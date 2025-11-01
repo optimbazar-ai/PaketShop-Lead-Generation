@@ -17,7 +17,7 @@ load_dotenv()
 # --- Konfiguratsiya --- #
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")
-WEBAPP_URL = 'https://your-domain.com/index.html' # TODO: Veb-ilova URL manzilini sozlash kerak
+WEBAPP_URL = 'https://paket-shop-lead-generation.vercel.app/'
 
 # --- Bot va Dispatcher --- #
 storage = MemoryStorage()
