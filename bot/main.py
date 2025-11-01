@@ -1,9 +1,9 @@
+import asyncio
 import logging
 import os
 import json
-from contextlib import asynccontextmanager
 
-from aiogram import Bot, Dispatcher, F, types
+from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart, Command
 from aiogram.types import (
     Message, InlineKeyboardButton, InlineKeyboardMarkup, 
@@ -11,24 +11,14 @@ from aiogram.types import (
 )
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.context import FSMContext
-from fastapi import FastAPI, Request, Response
 from dotenv import load_dotenv
 
-# --- Logging sozlamalari ---
-logging.basicConfig(level=logging.INFO)
-
-# --- .env faylini yuklash ---
 load_dotenv()
 
 # --- Konfiguratsiya --- #
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")
 WEBAPP_URL = 'https://paket-shop-lead-generation.vercel.app/'
-
-# Vercel bu o'zgaruvchini avtomatik tarzda o'rnatadi
-VERCEL_URL = os.getenv("VERCEL_URL", "") 
-WEBHOOK_PATH = f"/webhook/{BOT_TOKEN}"
-WEBHOOK_URL = f"https://{VERCEL_URL}{WEBHOOK_PATH}"
 
 # --- Bot va Dispatcher --- #
 storage = MemoryStorage()
@@ -141,30 +131,11 @@ async def handle_messages(message: Message, state: FSMContext):
     elif text == texts[lang_code]['change_lang']:
         await message.answer(texts['uz']['choose_lang'], reply_markup=language_keyboard())
 
-# --- FastAPI va Webhook sozlamalari --- #
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    if VERCEL_URL:
-        logging.info(f"Setting webhook to: {WEBHOOK_URL}")
-        await bot.set_webhook(url=WEBHOOK_URL, allowed_updates=dp.resolve_used_update_types())
-        yield
-        logging.info("Deleting webhook.")
-        await bot.delete_webhook()
-    else:
-        logging.info("Running in local mode, skipping webhook setup.")
-        yield
+# --- Botni ishga tushirish --- #
+async def main():
+    logging.basicConfig(level=logging.INFO)
+    logging.info("Bot ishga tushmoqda...")
+    await dp.start_polling(bot)
 
-app = FastAPI(lifespan=lifespan)
-
-@app.post(WEBHOOK_PATH)
-async def bot_webhook(update: dict):
-    try:
-        telegram_update = types.Update(**update)
-        await dp.feed_update(bot=bot, update=telegram_update)
-    except Exception as e:
-        logging.error(f"Error processing update: {e}")
-    return Response(status_code=200)
-
-@app.get("/")
-async def read_root():
-    return {"status": "Bot is running"}
+if __name__ == '__main__':
+    asyncio.run(main())
