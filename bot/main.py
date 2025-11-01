@@ -28,7 +28,7 @@ WEBAPP_URL = 'https://paket-shop-lead-generation.vercel.app/'
 # Vercel bu o'zgaruvchini avtomatik tarzda o'rnatadi
 VERCEL_URL = os.getenv("VERCEL_URL", "") 
 WEBHOOK_PATH = f"/webhook/{BOT_TOKEN}"
-WEBHOOK_URL = f"{VERCEL_URL}{WEBHOOK_PATH}"
+WEBHOOK_URL = f"https://{VERCEL_URL}{WEBHOOK_PATH}"
 
 # --- Bot va Dispatcher --- #
 storage = MemoryStorage()
