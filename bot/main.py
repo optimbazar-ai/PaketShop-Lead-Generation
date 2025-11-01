@@ -11,6 +11,8 @@ from aiogram.types import (
 )
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import ReplyKeyboardRemove
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -53,6 +55,12 @@ texts = {
     }
 }
 
+# --- FSM Holatlar --- #
+class Form(StatesGroup):
+    name = State()
+    phone = State()
+    product = State()
+
 # --- Klaviaturalar --- #
 def language_keyboard():
     buttons = [
@@ -68,6 +76,13 @@ def main_menu_keyboard(lang_code):
         [KeyboardButton(text=texts[lang_code]['change_lang'])]
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
+
+def products_keyboard(lang_code):
+    products_uz = ["Karton qutilar", "Gofrokarton", "Kog'oz paketlar", "Yelimli paketlar (skotch)", "Boshqa"]
+    products_ru = ["Картонные коробки", "Гофрокартон", "Бумажные пакеты", "Клейкие ленты (скотч)", "Другое"]
+    products = products_uz if lang_code == 'uz' else products_ru
+    buttons = [[KeyboardButton(text=p)] for p in products]
+    return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True, one_time_keyboard=True)
 
 # --- Handlers --- #
 @dp.message(CommandStart())
@@ -118,18 +133,72 @@ async def handle_messages(message: Message, state: FSMContext):
 
     text = message.text
     if text == texts[lang_code]['leave_request']:
-        webapp_button = InlineKeyboardButton(
-            text=texts[lang_code]['fill_form'],
-            web_app=WebAppInfo(url=f"{WEBAPP_URL}?lang={lang_code}")
-        )
+        await state.set_state(Form.name)
         await message.answer(
-            texts[lang_code]['request_prompt'],
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[webapp_button]])
+            "Ismingizni kiriting:" if lang_code == 'uz' else "Введите ваше имя:",
+            reply_markup=ReplyKeyboardRemove()
         )
     elif text == texts[lang_code]['about_company']:
         await message.answer(texts[lang_code]['about_text'], disable_web_page_preview=True)
     elif text == texts[lang_code]['change_lang']:
         await message.answer(texts['uz']['choose_lang'], reply_markup=language_keyboard())
+
+# --- FSM: Ismni qabul qilish ---
+@dp.message(Form.name)
+async def process_name(message: Message, state: FSMContext):
+    await state.update_data(name=message.text)
+    user_data = await state.get_data()
+    lang_code = user_data.get('language', 'uz')
+    await state.set_state(Form.phone)
+    await message.answer(
+        "Telefon raqamingizni kiriting:" if lang_code == 'uz' else "Введите ваш номер телефона:"
+    )
+
+# --- FSM: Telefon raqamini qabul qilish ---
+@dp.message(Form.phone)
+async def process_phone(message: Message, state: FSMContext):
+    await state.update_data(phone=message.text)
+    user_data = await state.get_data()
+    lang_code = user_data.get('language', 'uz')
+    await state.set_state(Form.product)
+    await message.answer(
+        "Mahsulot turini tanlang:" if lang_code == 'uz' else "Выберите тип продукции:",
+        reply_markup=products_keyboard(lang_code)
+    )
+
+# --- FSM: Mahsulotni qabul qilish va yakunlash ---
+@dp.message(Form.product)
+async def process_product(message: Message, state: FSMContext):
+    user_data = await state.get_data()
+    lang_code = user_data.get('language', 'uz')
+    
+    try:
+        data = await state.get_data()
+        data['product'] = message.text
+
+        admin_message = (
+            f"🔔 Yangi Ariza (PaketShop Bot)\n\n"
+            f"<b>Mijoz:</b> {data.get('name', 'N/A')}\n"
+            f"<b>Telefon:</b> {data.get('phone', 'N/A')}\n"
+            f"<b>Qiziqqan mahsuloti:</b> {data.get('product', 'N/A')}\n\n"
+            f"<b>Telegram:</b> @{message.from_user.username if message.from_user.username else 'N/A'}"
+        )
+        
+        await bot.send_message(ADMIN_CHAT_ID, admin_message)
+        logging.info("Xabar adminga muvaffaqiyatli yuborildi.")
+
+        await message.answer(
+            texts[lang_code]['request_accepted'],
+            reply_markup=main_menu_keyboard(lang_code)
+        )
+    except Exception as e:
+        logging.error(f"Adminga xabar yuborishda xatolik: {e}")
+        await message.answer(
+            "Xatolik yuz berdi. Iltimos, keyinroq urinib ko'ring." if lang_code == 'uz' else "Произошла ошибка. Пожалуйста, попробуйте позже.",
+            reply_markup=main_menu_keyboard(lang_code)
+        )
+    finally:
+        await state.clear()
 
 # --- Botni ishga tushirish --- #
 async def main():
