@@ -9,7 +9,6 @@ from aiogram.types import (Message, InlineKeyboardButton, InlineKeyboardMarkup,
                            ReplyKeyboardMarkup, KeyboardButton, WebAppInfo, CallbackQuery)
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
 
 from dotenv import load_dotenv
 
@@ -18,6 +17,7 @@ load_dotenv()
 # --- Konfiguratsiya --- #
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")
+WEBAPP_URL = 'https://paket-shop-lead-generation.vercel.app/'
 
 # --- Bot va Dispatcher --- #
 storage = MemoryStorage()
@@ -31,9 +31,6 @@ texts = {
         'choose_lang': "Iltimos, tilni tanlang:",
         'main_menu': "Asosiy menyu",
         'leave_request': "✍️ Ariza qoldirish",
-        'enter_name': "Ismingizni kiriting:",
-        'enter_phone': "Telefon raqamingizni kiriting:",
-        'choose_product': "Mahsulot turini tanlang:",
         'about_company': "ℹ️ Kompaniya haqida",
         'change_lang': "🇺🇿/🇷🇺 Tilni o'zgartirish",
         'about_text': "<b>PaketShop</b> - bu... (Kompaniya haqida to'liq ma'lumot shu yerda bo'ladi).\n\nBatafsil ma'lumot uchun saytimizga tashrif buyuring: <a href='https://paketshop.uz/'>paketshop.uz</a>",
@@ -46,9 +43,6 @@ texts = {
         'choose_lang': "Пожалуйста, выберите язык:",
         'main_menu': "Главное меню",
         'leave_request': "Оставить заявку",
-        'enter_name': "Введите ваше имя:",
-        'enter_phone': "Введите ваш номер телефона:",
-        'choose_product': "Выберите тип продукции:",
         'about_company': "О компании",
         'change_lang': "🇺🇿/🇷🇺 Сменить язык",
         'about_text': "<b>PaketShop</b> - это... (Полная информация о компании будет здесь).\n\nДля получения дополнительной информации посетите наш сайт: <a href='https://paketshop.uz/'>paketshop.uz</a>",
@@ -93,97 +87,60 @@ async def process_language_select(callback_query: CallbackQuery, state: FSMConte
     )
     await callback_query.answer()
 
-# --- Ariza qoldirish uchun holatlar (FSM) ---
-class Form(StatesGroup):
-    name = State()
-    phone = State()
-    product = State()
-
-# --- Mahsulotlar ro'yxati uchun klaviatura ---
-def products_keyboard(lang_code):
-    products = {
-        'uz': ["Karton qutilar", "Gofrokarton", "Kog'oz paketlar", "Yelimli paketlar (skotch)", "Boshqa"],
-        'ru': ["Картонные коробки", "Гофрокартон", "Бумажные пакеты", "Клейкие ленты (скотч)", "Другое"]
-    }
-    buttons = [[KeyboardButton(text=p)] for p in products[lang_code]]
-    return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True, one_time_keyboard=True)
-
 # --- Asosiy menyu tugmalarini qayta ishlash --- #
-@dp.message(Command('cancel'))
-@dp.message(F.text.casefold() == 'cancel')
-async def cancel_handler(message: Message, state: FSMContext) -> None:
-    current_state = await state.get_state()
-    if current_state is None:
-        return
-
-    await state.clear()
+@dp.message()
+async def handle_menu_buttons(message: Message, state: FSMContext):
     user_data = await state.get_data()
-    lang_code = user_data.get('language', 'uz')
-    await message.answer("Bekor qilindi.", reply_markup=main_menu_keyboard(lang_code))
+    lang_code = user_data.get('language', 'uz') # default 'uz'
 
-@dp.message(F.text.in_(texts['uz'].values()) | F.text.in_(texts['ru'].values()))
-async def handle_main_menu(message: Message, state: FSMContext):
-    user_data = await state.get_data()
-    lang_code = user_data.get('language', 'uz')
-
+    # Ariza qoldirish
     if message.text == texts[lang_code]['leave_request']:
-        await state.set_state(Form.name)
-        await message.answer(texts[lang_code]['enter_name'], reply_markup=ReplyKeyboardRemove())
-    
+        webapp_button = InlineKeyboardButton(
+            text=texts[lang_code]['fill_form'],
+            web_app=WebAppInfo(url=f"{WEBAPP_URL}?lang={lang_code}")
+        )
+        await message.answer(
+            texts[lang_code]['request_prompt'],
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[webapp_button]])
+        )
+
+    # Kompaniya haqida
     elif message.text == texts[lang_code]['about_company']:
         await message.answer(texts[lang_code]['about_text'], disable_web_page_preview=True)
 
+    # Tilni o'zgartirish
     elif message.text == texts[lang_code]['change_lang']:
         await message.answer(texts['uz']['choose_lang'], reply_markup=language_keyboard())
-
-# --- Ismni qabul qilish ---
-@dp.message(Form.name)
-async def process_name(message: Message, state: FSMContext):
-    await state.update_data(name=message.text)
-    await state.set_state(Form.phone)
-    user_data = await state.get_data()
-    lang_code = user_data.get('language', 'uz')
-    await message.answer(texts[lang_code]['enter_phone'])
-
-# --- Telefon raqamini qabul qilish ---
-@dp.message(Form.phone)
-async def process_phone(message: Message, state: FSMContext):
-    await state.update_data(phone=message.text)
-    await state.set_state(Form.product)
-    user_data = await state.get_data()
-    lang_code = user_data.get('language', 'uz')
-    await message.answer(texts[lang_code]['choose_product'], reply_markup=products_keyboard(lang_code))
-
-# --- Mahsulotni qabul qilish va arizani yakunlash ---
-@dp.message(Form.product)
-async def process_product(message: Message, state: FSMContext):
-    user_data = await state.get_data()
-    lang_code = user_data.get('language', 'uz')
-    
-    # Arizani adminga yuborish
-    try:
-        data = await state.get_data()
-        data['product'] = message.text
-
-        admin_message = (
-            f"🔔 Yangi Ariza (PaketShop Bot)\n\n"
-            f"<b>Mijoz:</b> {data.get('name', 'N/A')}\n"
-            f"<b>Telefon:</b> {data.get('phone', 'N/A')}\n"
-            f"<b>Qiziqqan mahsuloti:</b> {data.get('product', 'N/A')}\n\n"
-            f"<b>Telegram:</b> @{message.from_user.username if message.from_user.username else 'N/A'}"
-        )
         
-        await bot.send_message(ADMIN_CHAT_ID, admin_message)
-        logging.info("Xabar adminga muvaffaqiyatli yuborildi.")
+    # WebApp'dan kelgan ma'lumotni qabul qilish
+    elif message.web_app_data:
+        logging.info("Web App ma'lumoti qabul qilindi.")
+        try:
+            data_str = message.web_app_data.data
+            logging.info(f"Ma'lumotlar (string): {data_str}")
+            data = json.loads(data_str)
+            logging.info(f"Ma'lumotlar (JSON): {data}")
 
-        # Foydalanuvchiga javob yuborish
-        await message.answer(texts[lang_code]['request_accepted'], reply_markup=main_menu_keyboard(lang_code))
+            # Foydalanuvchiga javob yuborish
+            await message.answer(texts[lang_code]['request_accepted'])
+            
+            # Adminga xabar yuborish
+            admin_message = (
+                f"🔔 Yangi Ariza (PaketShop Bot)\n\n"
+                f"<b>Mijoz:</b> {data.get('name', 'N/A')}\n"
+                f"<b>Telefon:</b> {data.get('phone', 'N/A')}\n"
+                f"<b>Qiziqqan mahsuloti:</b> {data.get('product', 'N/A')}\n\n"
+                f"<b>Telegram:</b> @{message.from_user.username if message.from_user.username else 'N/A'}"
+            )
+            
+            logging.info(f"Adminga yuboriladigan xabar: \n{admin_message}")
+            logging.info(f"Admin chat ID: {ADMIN_CHAT_ID}")
 
-    except Exception as e:
-        logging.error(f"Adminga xabar yuborishda xatolik: {e}")
-        await message.answer("Xatolik yuz berdi. Iltimos, keyinroq urinib ko'ring.", reply_markup=main_menu_keyboard(lang_code))
-    finally:
-        await state.clear()
+            await bot.send_message(ADMIN_CHAT_ID, admin_message)
+            logging.info("Xabar adminga muvaffaqiyatli yuborildi.")
+
+        except Exception as e:
+            logging.error(f"Adminga xabar yuborishda xatolik: {e}")
 
 # --- Chat ID'ni olish uchun maxsus buyruq ---
 @dp.message(Command('get_chat_id'))

@@ -193,10 +193,16 @@
                 product: productSelect.value
             };
 
-            // Ma'lumotni botga yuborish
-            tg.sendData(JSON.stringify(data));
-            // WebApp'ni yopish
-            tg.close();
+            try {
+                // Ma'lumotni botga yuborish
+                console.log('Sending data:', data);
+                tg.sendData(JSON.stringify(data));
+                // WebApp'ni yopish
+                // tg.close(); // <-- Muammoni aniqlash uchun vaqtincha o'chirib turamiz
+            } catch (e) {
+                console.error('Error sending data:', e);
+                tg.showAlert('Ma\'lumot yuborishda xatolik yuz berdi: ' + e.message);
+            }
         });
 
         // --- Ilovani ishga tushirish ---
