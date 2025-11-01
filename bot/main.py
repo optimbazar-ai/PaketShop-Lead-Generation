@@ -114,18 +114,33 @@ async def handle_menu_buttons(message: Message, state: FSMContext):
         
     # WebApp'dan kelgan ma'lumotni qabul qilish
     elif message.web_app_data:
-        await message.answer(texts[lang_code]['request_accepted'])
-        
-        # Adminga xabar yuborish
-        data = json.loads(message.web_app_data.data)
-        admin_message = (
-            f"🔔 Yangi Ariza (PaketShop Bot)\n\n"
-            f"<b>Mijoz:</b> {data.get('name', 'N/A')}\n"
-            f"<b>Telefon:</b> {data.get('phone', 'N/A')}\n"
-            f"<b>Qiziqqan mahsuloti:</b> {data.get('product', 'N/A')}\n\n"
-            f"<b>Telegram:</b> @{message.from_user.username if message.from_user.username else 'N/A'}"
-        )
-        await bot.send_message(ADMIN_CHAT_ID, admin_message)
+        logging.info("Web App ma'lumoti qabul qilindi.")
+        try:
+            data_str = message.web_app_data.data
+            logging.info(f"Ma'lumotlar (string): {data_str}")
+            data = json.loads(data_str)
+            logging.info(f"Ma'lumotlar (JSON): {data}")
+
+            # Foydalanuvchiga javob yuborish
+            await message.answer(texts[lang_code]['request_accepted'])
+            
+            # Adminga xabar yuborish
+            admin_message = (
+                f"🔔 Yangi Ariza (PaketShop Bot)\n\n"
+                f"<b>Mijoz:</b> {data.get('name', 'N/A')}\n"
+                f"<b>Telefon:</b> {data.get('phone', 'N/A')}\n"
+                f"<b>Qiziqqan mahsuloti:</b> {data.get('product', 'N/A')}\n\n"
+                f"<b>Telegram:</b> @{message.from_user.username if message.from_user.username else 'N/A'}"
+            )
+            
+            logging.info(f"Adminga yuboriladigan xabar: \n{admin_message}")
+            logging.info(f"Admin chat ID: {ADMIN_CHAT_ID}")
+
+            await bot.send_message(ADMIN_CHAT_ID, admin_message)
+            logging.info("Xabar adminga muvaffaqiyatli yuborildi.")
+
+        except Exception as e:
+            logging.error(f"Adminga xabar yuborishda xatolik: {e}")
 
 # --- Botni ishga tushirish --- #
 async def main():
