@@ -181,9 +181,13 @@
         // --- Formani yuborish ---
         form.addEventListener('submit', function(event) {
             event.preventDefault();
+            
+            console.log('Form submit event triggered');
+            console.log('Telegram WebApp object:', tg);
+            console.log('Is tg.sendData available?', typeof tg.sendData);
 
             if (!nameInput.value || !phoneInput.value || !productSelect.value) {
-                tg.showAlert(i18n[lang]['validation-error']);
+                alert('Iltimos, barcha maydonlarni to\'ldiring.');
                 return;
             }
 
@@ -193,15 +197,26 @@
                 product: productSelect.value
             };
 
+            console.log('Data to send:', data);
+            
+            // Tugmani o'chirish
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Yuborilmoqda...';
+
             try {
-                // Ma'lumotni botga yuborish
-                console.log('Sending data:', data);
-                tg.sendData(JSON.stringify(data));
-                // WebApp'ni yopish
-                tg.close();
+                if (typeof tg.sendData === 'function') {
+                    console.log('Calling tg.sendData...');
+                    tg.sendData(JSON.stringify(data));
+                    console.log('Data sent successfully');
+                    tg.close();
+                } else {
+                    throw new Error('tg.sendData funksiyasi mavjud emas. Mini App bot orqali ochilmagan bo\'lishi mumkin.');
+                }
             } catch (e) {
-                console.error('Error sending data:', e);
-                tg.showAlert('Ma\'lumot yuborishda xatolik yuz berdi: ' + e.message);
+                console.error('Error:', e);
+                alert('Xatolik: ' + e.message);
+                submitBtn.disabled = false;
+                submitBtn.innerText = i18n[lang]['submit-btn'];
             }
         });
 
